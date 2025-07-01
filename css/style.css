@@ -1,0 +1,28 @@
+#map { 
+    height: 500px;
+    z-index: 10;
+}
+body { font-family: Arial; margin: 20px; }
+.controls { margin-bottom: 10px; }
+.autocomplete {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+     z-index: 1001;
+    max-height: 150px;
+    overflow-y: auto;
+    width: 300px;
+}
+.autocomplete div {
+    padding: 5px;
+    cursor: pointer;
+}
+.autocomplete div:hover {
+    background: #f0f0f0;
+}
+  .btn-check:checked + .btn {
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.2);
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+  }
