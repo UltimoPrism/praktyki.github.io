@@ -361,6 +361,7 @@ function finishEditing(cell, input, field, id, originalValue) {
   if (field === "year") {
     const val = Number(newValue);
     if (!val || val < 2000 || val > 2100) {
+      input.value = originalValue
       alert("Rok musi być liczbą z zakresu 2000-2100");
       input.focus();
       return;
