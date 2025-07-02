@@ -92,6 +92,21 @@ const siteData =
     "sales": 8800
   }
 ]
+
+
+//Debugging
+const departments = [...new Set(siteData.flatMap((x)=>x.department))]
+departments.forEach(item=>{
+  const option = document.createElement("option")
+  option.value = item;
+  option.innerHTML = item;
+  const option2 = document.createElement("option")
+  option2.value = item;
+  option2.innerHTML = item;      
+  document.getElementById("addDepartment").appendChild(option);
+  document.getElementById("departmentFilter").appendChild(option2);
+})
+
 function downloadData() {
   fetch("", {
     method: "GET",
@@ -111,7 +126,17 @@ function downloadData() {
     siteData.push(...data);
     filteredData = [...data];
     currentSort = {};
-    
+    const departments = [...new Set(siteData.flatMap((x)=>x.department))]
+    departments.forEach(item=>{
+      const option = document.createElement("option")
+      option.value = item;
+      option.innerHTML = item;
+      const option2 = document.createElement("option")
+      option2.value = item;
+      option2.innerHTML = item;      
+      document.getElementById("addDepartment").appendChild(option);
+      document.getElementById("departmentFilter").appendChild(option2);
+    })
     displayData(filteredData);
   })
   .catch(error => {
@@ -225,19 +250,7 @@ const monthsPL = [
   "listopad",
   "grudzień"
 ];
-    const departments = [...new Set(siteData.flatMap((x)=>x.department))]
-    document.getElementById("addDepartment").innerHTML='<option value="">Wybierz dział</option>';
-    document.getElementById("departmentFilter").innerHTML='<option value="">Wszystkie</option>';
-    departments.forEach(item=>{
-      const option = document.createElement("option")
-      option.value = item;
-      option.innerHTML = item;
-      const option2 = document.createElement("option")
-      option2.value = item;
-      option2.innerHTML = item;      
-      document.getElementById("addDepartment").appendChild(option);
-      document.getElementById("departmentFilter").appendChild(option2);
-    })
+
     const tbody = document.getElementById("dataTable");
     tbody.innerHTML = ""; // Clear previous content
 
