@@ -225,7 +225,7 @@ const monthsPL = [
   "listopad",
   "grudzień"
 ];
-    const departments = [...new Set(data.flatMap((x)=>x.department))]
+    const departments = [...new Set(siteData.flatMap((x)=>x.department))]
     document.getElementById("addDepartment").innerHTML='';
     document.getElementById("departmentFilter").innerHTML='';
     departments.forEach(item=>{
