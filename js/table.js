@@ -371,6 +371,7 @@ function finishEditing(cell, input, field, id, originalValue) {
   if (field === "sales") {
     const val = Number(newValue);
     if (isNaN(val) || val < 0) {
+      input.value = originalValue
       alert("Sprzedaż musi być liczbą dodatnią lub zerem");
       input.focus();
       return;
@@ -380,6 +381,7 @@ function finishEditing(cell, input, field, id, originalValue) {
   if (field === "month") {
     const val = Number(newValue);
     if (val < 1 || val > 12) {
+      input.value = originalValue
       alert("Miesiąc musi być w zakresie 1-12");
       input.focus();
       return;
@@ -387,6 +389,7 @@ function finishEditing(cell, input, field, id, originalValue) {
     newValue = val;
   }
   if ((field === "firstName" || field === "lastName" || field === "department") && newValue === "") {
+    input.value = originalValue
     alert("To pole nie może być puste");
     input.focus();
     return;
