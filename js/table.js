@@ -226,8 +226,8 @@ const monthsPL = [
   "grudzień"
 ];
     const departments = [...new Set(siteData.flatMap((x)=>x.department))]
-    document.getElementById("addDepartment").innerHTML='';
-    document.getElementById("departmentFilter").innerHTML='';
+    document.getElementById("addDepartment").innerHTML='<option value="">Wybierz dział</option>';
+    document.getElementById("departmentFilter").innerHTML='<option value="">Wszystkie</option>';
     departments.forEach(item=>{
       const option = document.createElement("option")
       option.value = item;
