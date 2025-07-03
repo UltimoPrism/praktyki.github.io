@@ -713,6 +713,73 @@ function exportToExcel() {
 async function importFromExcel(file) {
   const reader = new FileReader();
 
+  function createMappingDialog(excelHeaders, targetFields) {
+    return new Promise(resolve => {
+      // Tworzymy modal i formularz dynamicznie
+      const modal = document.createElement("div");
+      modal.style = `
+        position: fixed; top:0; left:0; width:100%; height:100%; 
+        background: rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center;
+        z-index: 1000;
+      `;
+
+      const form = document.createElement("form");
+      form.style = `
+        background: white; padding: 20px; border-radius: 8px; max-width: 400px;
+        max-height: 80vh; overflow-y: auto;
+      `;
+
+      form.innerHTML = `<h3>Mapowanie kolumn</h3>
+        <p>Wybierz, które kolumny odpowiadają polom danych.</p>`;
+
+      excelHeaders.forEach((header, index) => {
+        const label = document.createElement("label");
+        label.textContent = `Kolumna "${header}" mapuj na:`;
+        label.style = "display:block; margin-top: 10px;";
+
+        const select = document.createElement("select");
+        select.name = `map_${index}`;
+        select.style = "width: 100%; padding: 5px; margin-top: 4px;";
+
+        const noneOption = document.createElement("option");
+        noneOption.value = "";
+        noneOption.textContent = "Nie importuj";
+        select.appendChild(noneOption);
+
+        targetFields.forEach(field => {
+          const option = document.createElement("option");
+          option.value = field;
+          option.textContent = field;
+          select.appendChild(option);
+        });
+
+        label.appendChild(select);
+        form.appendChild(label);
+      });
+
+      const btnSubmit = document.createElement("button");
+      btnSubmit.type = "submit";
+      btnSubmit.textContent = "Importuj";
+      btnSubmit.style = "margin-top: 15px; padding: 8px 12px;";
+      form.appendChild(btnSubmit);
+
+      modal.appendChild(form);
+      document.body.appendChild(modal);
+
+      form.onsubmit = (ev) => {
+        ev.preventDefault();
+        const formData = new FormData(form);
+        const mapping = {};
+        for (const [key, value] of formData.entries()) {
+          const idx = parseInt(key.split("_")[1], 10);
+          if (value) mapping[idx] = value;
+        }
+        document.body.removeChild(modal);
+        resolve(mapping);
+      };
+    });
+  }
+
   reader.onload = async (e) => {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: "array" });
@@ -720,15 +787,47 @@ async function importFromExcel(file) {
     const worksheet = workbook.Sheets[firstSheetName];
     const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-    const importedData = json.slice(1).map(row => ({
-      id: Number(row[0]),
-      firstName: row[1] || "",
-      lastName: row[2] || "",
-      department: row[3] || "",
-      month: Number(row[4]),
-      year: Number(row[5]),
-      sales: Number(row[6])
-    })).filter(item => !isNaN(item.id));
+    if (json.length === 0) {
+      alert("Plik Excel jest pusty.");
+      return;
+    }
+
+    const excelHeaders = json[0].map(h => h.toString().trim().toLowerCase().replace(" ",""));
+    const expectedFields = ["id", "firstname", "lastname", "department", "month", "year", "sales"];
+
+    const headersMatch = expectedFields.every(field => excelHeaders.includes(field));
+
+    let mapping = null;
+    if (!headersMatch) {
+      mapping = await createMappingDialog(excelHeaders, expectedFields);
+    } else {
+      mapping = {};
+      expectedFields.forEach(field => {
+        const idx = excelHeaders.indexOf(field);
+        if (idx !== -1) mapping[idx] = field;
+      });
+    }
+
+    // Parsowanie danych wg mapowania
+    const importedData = json.slice(1).map(row => {
+      const obj = {};
+      for (const [colIndex, field] of Object.entries(mapping)) {
+        let value = row[colIndex];
+
+        // Rzutowanie typów dla konkretnych pól
+        if (["id", "month", "year", "sales"].includes(field)) {
+          value = Number(value);
+          if (isNaN(value)) {
+            // Jeśli wartość numeryczna niepoprawna, daj null albo 0 w sales
+            value = field === "sales" ? 0 : null;
+          }
+        } else if (typeof value === "undefined" || value === null) {
+          value = "";
+        }
+        obj[field] = value;
+      }
+      return obj;
+    }).filter(item => item.id !== null && !isNaN(item.id));
 
     function isDuplicate(a, b) {
       return a.firstName === b.firstName &&
@@ -784,11 +883,11 @@ async function importFromExcel(file) {
         existing.year = incoming.year;
         existing.sales = incoming.sales;
       } else if (action === "ignoruj") {
+        // nic nie rób
       }
     }
 
     siteData = [...siteData, ...uniqueImports];
-
     filteredData = [...siteData];
     await saveToDB(siteData);
     displayData(filteredData);
