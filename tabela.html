@@ -4,6 +4,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sales Table</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
     <style>
         th {
         position: relative;
@@ -32,6 +35,11 @@
     </head>
     <body>    
     <div class="container my-5">
+        <div class="d-flex justify-content-end">
+        <button id="exportBtn" class="btn btn-primary btn-sm ">Eksportuj do Excel</button>
+        <input type="file" id="importInput" accept=".xlsx,.xls" style="display:none" />
+        <button id="importBtn" class="btn btn-primary btn-sm ms-1" >Importuj z Excel</button>
+        </div>
         <h2 class="mb-4">Sales Table</h2>
         <form id="filters" class="row g-3 mb-4">
         <div class="col-md-3">
@@ -118,9 +126,7 @@
         </div>
         <div class="col-md-2">
             <label for="addDepartment" class="form-label">Dział</label>
-            <select id="addDepartment" class="form-select" required>
-            <option value="">Wybierz dział</option>
-            </select>
+            <input type="text" id="addDepartment" class="form-control" required>
         </div>
         <div class="col-md-1">
             <label for="addMonth" class="form-label">Miesiąc</label>
@@ -152,12 +158,38 @@
             <button type="submit" class="btn btn-primary">Dodaj wpis</button>
         </div>
         </form>
-
+        <div style="margin-top: 40px; text-align: center;">
+            <div class="row justify-content-center">
+                <div class="col-md-2">
+                    <label for="chartType" class="form-label">Wybierz typ wykresu: </label>
+                    <select id="chartType" class="form-select ">
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                        <option value="pie">Pie</option>
+                        <option value="doughnut">Doughnut</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="groupSelect" class="form-label">Grupuj według: </label>
+                    <select id="groupSelect" class="form-select ">
+                        <option value="department">Dział</option>
+                        <option value="time">Czas</option>
+                    </select>
+                </div>
+            </div>
+            <div style="width: 800px; height: 400px; margin: auto;">
+                <canvas id="salesChart" width="800" height="400"></canvas>
+            </div>
+        </div>
 
 
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/table.js"></script>
+    <script>
+        
+
+    </script>
     </body>
 </html>

@@ -1,5 +1,5 @@
 
-const siteData =
+let siteData =
 [
   {
     "id": 1,
@@ -92,60 +92,91 @@ const siteData =
     "sales": 8800
   }
 ]
+let filteredData = [];
+const siteDataById = new Map(siteData.map(item => [item.id, item]))
+let db;
+const DB_NAME = "SalesDB";
+const STORE_NAME = "sales";
+let chartInstance = null;
 
-
-//Debugging
-const departments = [...new Set(siteData.flatMap((x)=>x.department))]
-departments.forEach(item=>{
-  const option = document.createElement("option")
-  option.value = item;
-  option.innerHTML = item;
-  const option2 = document.createElement("option")
-  option2.value = item;
-  option2.innerHTML = item;      
-  document.getElementById("addDepartment").appendChild(option);
-  document.getElementById("departmentFilter").appendChild(option2);
-})
-
-function downloadData() {
-  fetch("", {
-    method: "GET",
-    headers: {
-      "Accept": "application/json"
-    }
-  })
-  .then(response => {
-    if (!response.ok) throw new Error("Network response was not ok");
-    return response.json();
-  })
-  .then(data => {
-    if (!Array.isArray(data)) {
-      throw new Error("Downloaded data is not an array");
-    }
-    siteData.length = 0;
-    siteData.push(...data);
-    filteredData = [...data];
-    currentSort = {};
-    const departments = [...new Set(siteData.flatMap((x)=>x.department))]
-    departments.forEach(item=>{
-      const option = document.createElement("option")
-      option.value = item;
-      option.innerHTML = item;
-      const option2 = document.createElement("option")
-      option2.value = item;
-      option2.innerHTML = item;      
-      document.getElementById("addDepartment").appendChild(option);
-      document.getElementById("departmentFilter").appendChild(option2);
-    })
-    displayData(filteredData);
-  })
-  .catch(error => {
-    alert("Error downloading data: " + error.message);
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = event => {
+      db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = event => {
+      db = event.target.result;
+      resolve();
+    };
+    request.onerror = () => reject("IndexedDB init error");
   });
 }
-
-let filteredData = [...siteData];
-
+function saveToDB(data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    data.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject("Save to DB failed");
+  });
+}
+function loadFromDB() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject("Read from DB failed");
+  });
+}
+function deleteFromDB(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject("Delete from DB failed");
+  });
+}
+function loadData() {
+  openDB().then(() => {
+    loadFromDB().then(data => {
+      if (data.length === 0) {
+        siteData.forEach(item => siteDataById.set(item.id, item));
+        saveToDB(siteData).then(() => {
+          filteredData = [...siteData];
+          displayData(filteredData);
+          const departments = [...new Set(siteData.flatMap((x)=>x.department))]
+          departments.forEach(item=>{
+            const option = document.createElement("option")
+            option.value = item;
+            option.innerHTML = item;
+            document.getElementById("departmentFilter").appendChild(option);
+          })
+        });
+      } else {
+        siteData = data;
+        siteDataById.clear();
+        siteData.forEach(item => siteDataById.set(item.id, item));
+        filteredData = [...siteData];
+        renderChart("bar");
+        displayData(filteredData);
+        const departments = [...new Set(siteData.flatMap((x)=>x.department))]
+        departments.forEach(item=>{
+          const option = document.createElement("option")
+          option.value = item;
+          option.innerHTML = item;
+          document.getElementById("departmentFilter").appendChild(option);
+        })
+      }
+    });
+  });
+  
+}
 function updateButtonStates(activeField) {
     const buttons = document.querySelectorAll("th button");
     buttons.forEach(btn => btn.classList.remove("active"));
@@ -231,6 +262,7 @@ function filterData() {
     });
   }
 
+  renderChart(document.getElementById("chartType").value);
   displayData(filteredData);
 }
 
@@ -395,35 +427,12 @@ function finishEditing(cell, input, field, id, originalValue) {
     return;
   }
 
-  // Update data in siteData
   const index = siteData.findIndex(item => item.id === id);
   if (index > -1) {
     siteData[index][field] = newValue;
   }
 
-  // Re-filter and display updated data
   filterData();
-
-  // Send update to server using fetch (POST to blank address)
-  fetch("", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ id, field, newValue })
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error("Network response was not ok");
-    }
-    return response.json(); // assuming server replies with JSON
-  })
-  .then(data => {
-    console.log("Update successful:", data);
-  })
-  .catch(error => {
-    console.error("Update failed:", error);
-  });
 }
 //Dodaj
 document.getElementById("addEntryForm").addEventListener("submit", function(e) {
@@ -449,9 +458,7 @@ document.getElementById("addEntryForm").addEventListener("submit", function(e) {
     return;
   }
 
-  const maxId = siteData.reduce((max, item) => item.id > max ? item.id : max, 0);
   const newEntry = {
-    id: maxId + 1,
     firstName,
     lastName,
     department,
@@ -459,52 +466,107 @@ document.getElementById("addEntryForm").addEventListener("submit", function(e) {
     year,
     sales
   };
-  //Debugging
-  siteData.push(newEntry);
-  filterData();
-  e.target.reset();
-  // Wyślij dane do pustego adresu
-  fetch("", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newEntry)
-  })
-  .then(response => {
-    if (!response.ok) throw new Error("Błąd sieci");
-  })
-  .then(() => {
+
+  function isDuplicate(a, b) {
+    return a.firstName === b.firstName &&
+           a.lastName === b.lastName &&
+           a.department === b.department &&
+           a.month === b.month &&
+           a.year === b.year;
+  }
+
+  const duplicates = siteData.filter(item => isDuplicate(item, newEntry));
+
+  if (duplicates.length > 0) {
+    const action = prompt(
+      `Znaleziono ${duplicates.length} duplikat(ów).\n` +
+      `Wpisz:\n` +
+      `"sumuj" - dodaj sprzedaż\n` +
+      `"nadpisz" - zastąp istniejące\n` +
+      `"ignoruj" - pomiń importowane duplikaty`
+    );
+
+    if (!action || !["sumuj", "nadpisz", "ignoruj"].includes(action.toLowerCase())) {
+      alert("Niepoprawna akcja. Operacja anulowana.");
+      return;
+    }
+
+    const tx = db.transaction("sales", "readwrite");
+    const store = tx.objectStore("sales");
+
+    for (const existing of duplicates) {
+      if (action.toLowerCase() === "sumuj") {
+        existing.sales += newEntry.sales;
+        store.put(existing);
+      } else if (action.toLowerCase() === "nadpisz") {
+        existing.firstName = newEntry.firstName;
+        existing.lastName = newEntry.lastName;
+        existing.department = newEntry.department;
+        existing.month = newEntry.month;
+        existing.year = newEntry.year;
+        existing.sales = newEntry.sales;
+        store.put(existing);
+      } else if (action.toLowerCase() === "ignoruj") {
+      }
+    }
+
+    tx.oncomplete = () => {
+      loadFromDB().then(data => {
+        siteData = data;
+        filterData();
+        e.target.reset();
+      });
+    };
+
+    tx.onerror = () => {
+      alert("Wystąpił błąd przy zapisie do IndexedDB.");
+    };
+
+  } else {
+    const maxId = siteData.reduce((max, item) => item.id > max ? item.id : max, 0);
+    newEntry.id = maxId + 1;
+
     siteData.push(newEntry);
-    filterData();
-    e.target.reset();
-  })
-  .catch(err => {
-    alert("Wystąpił błąd przy wysyłaniu danych: " + err.message);
-  });
+
+    const tx = db.transaction("sales", "readwrite");
+    const store = tx.objectStore("sales");
+    store.put(newEntry);
+
+    tx.oncomplete = () => {
+      filterData();
+      e.target.reset();
+    };
+
+    tx.onerror = () => {
+      alert("Wystąpił błąd przy zapisie do IndexedDB.");
+    };
+  }
 });
+
+
 //Usuń
 document.getElementById("dataTable").addEventListener("click", function(event) {
   if (event.target.classList.contains("delete-btn")) {
     const id = Number(event.target.getAttribute("data-id"));
     if (confirm("Czy na pewno chcesz usunąć ten wpis?")) {
-      //Debugging
-      const index = sampleData.findIndex(item => item.id === id);
+      const index = siteData.findIndex(item => item.id === id);
       if (index > -1) {
         siteData.splice(index, 1);
         filterData();
       }
-      fetch(""+id, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      })
-      .then(response => {
-        if (!response.ok) throw new Error("Błąd podczas usuwania");
-        const index = sampleData.findIndex(item => item.id === id);
-        if (index > -1) {
-          siteData.splice(index, 1);
-          filterData();
-        }
-      })
-      .catch(err => alert("Nie udało się usunąć wpisu: " + err.message));
+
+      // DELETE from IndexedDB
+      const tx = db.transaction("sales", "readwrite");
+      const store = tx.objectStore("sales");
+      store.delete(id);
+
+      tx.oncomplete = () => {
+        console.log(`Wpis ID ${id} został usunięty z IndexedDB`);
+      };
+
+      tx.onerror = () => {
+        alert("Wystąpił błąd podczas usuwania z IndexedDB.");
+      };
     }
   }
 });
@@ -512,7 +574,7 @@ document.getElementById("dataTable").addEventListener("click", function(event) {
 
 
 
-// Call the function on page load
+loadData();
 displayData(filteredData);
 document.getElementById("firstNameId").addEventListener("click", () => sortDataBy("firstName"));
 document.getElementById("lastNameId").addEventListener("click", () => sortDataBy("lastName"));
@@ -527,3 +589,225 @@ document.getElementById("monthFilter").addEventListener("change", filterData);
 document.getElementById("yearFilter").addEventListener("input", filterData);
 document.getElementById("minSalesFilter").addEventListener("input", filterData);
 document.getElementById("maxSalesFilter").addEventListener("input", filterData);
+
+//Charts logic
+function renderChart(chartType = "bar") {
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  const grouping = document.getElementById('groupSelect').value;
+  const monthsPL = [
+    "-", "styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec",
+    "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"
+  ];
+
+  if (chartInstance) chartInstance.destroy();
+
+  let groupKeyFn;
+  let uniqueYears = new Set();
+  let isMonthGrouping = false;
+
+  if (grouping === "department") {
+    groupKeyFn = item => item.department;
+  } else {
+    uniqueYears = new Set(filteredData.map(d => d.year));
+    if (uniqueYears.size === 1) {
+      groupKeyFn = item => item.month;  // use numeric month for sorting
+      isMonthGrouping = true;
+    } else {
+      groupKeyFn = item => item.year;
+    }
+  }
+
+  const grouped = {};
+  filteredData.forEach(entry => {
+    const key = groupKeyFn(entry);
+    if (!grouped[key]) grouped[key] = 0;
+    grouped[key] += entry.sales;
+  });
+
+  let labels;
+  if (isMonthGrouping) {
+    // Sort numerically and convert to Polish month names
+    labels = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+    labels = labels.map(m => monthsPL[m]);
+  } else if (grouping === "time") {
+    // Year-based grouping: sort years numerically
+    labels = Object.keys(grouped).map(Number).sort((a, b) => a - b).map(String);
+  } else {
+    // Department or other grouping: sort alphabetically
+    labels = Object.keys(grouped).sort();
+  }
+
+  const values = labels.map(label => {
+    // If month name (from isMonthGrouping), find the month index
+    if (isMonthGrouping) {
+      const monthIndex = monthsPL.indexOf(label);
+      return grouped[monthIndex];
+    }
+    return grouped[label];
+  });
+
+  chartInstance = new Chart(ctx, {
+    type: chartType,
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Sprzedaż',
+        data: values,
+        backgroundColor: ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: chartType !== 'bar' && chartType !== 'line'
+        },
+        tooltip: {
+          callbacks: {
+            label: context => `${context.label}: ${context.raw}`
+          }
+        }
+      },
+      scales: chartType === 'bar' || chartType === 'line' ? {
+        y: {
+          beginAtZero: true
+        }
+      } : {}
+    }
+  });
+}
+
+document.getElementById("groupSelect").addEventListener("change", function () {
+
+  renderChart(document.getElementById("chartType").value);
+});
+
+document.getElementById("chartType").addEventListener("change", function () {
+  renderChart(this.value);
+});
+//Excel logic
+function exportToExcel() {
+  const wsData = [
+    ["ID", "First Name", "Last Name", "Department", "Month", "Year", "Sales"]
+  ];
+
+  filteredData.forEach(item => {
+    wsData.push([
+      item.id,
+      item.firstName,
+      item.lastName,
+      item.department,
+      item.month,
+      item.year,
+      item.sales
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Sprzedaż");
+
+  XLSX.writeFile(wb, "sprzedaz.xlsx");
+}
+async function importFromExcel(file) {
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+    const importedData = json.slice(1).map(row => ({
+      id: Number(row[0]),
+      firstName: row[1] || "",
+      lastName: row[2] || "",
+      department: row[3] || "",
+      month: Number(row[4]),
+      year: Number(row[5]),
+      sales: Number(row[6])
+    })).filter(item => !isNaN(item.id));
+
+    function isDuplicate(a, b) {
+      return a.firstName === b.firstName &&
+             a.lastName === b.lastName &&
+             a.department === b.department &&
+             a.month === b.month &&
+             a.year === b.year;
+    }
+
+    const duplicates = [];
+    const uniqueImports = [];
+
+    for (const impEntry of importedData) {
+      const existing = siteData.find(s => isDuplicate(s, impEntry));
+      if (existing) {
+        duplicates.push({ existing, incoming: impEntry });
+      } else {
+        uniqueImports.push(impEntry);
+      }
+    }
+
+    if (duplicates.length === 0) {
+      siteData = [...siteData, ...uniqueImports];
+      filteredData = [...siteData];
+      await saveToDB(siteData);
+      displayData(filteredData);
+      renderChart();
+      alert("Import zakończony pomyślnie!");
+      return;
+    }
+
+    const action = prompt(
+      `Znaleziono ${duplicates.length} duplikaty.\n` +
+      `Wpisz:\n` +
+      `"sumuj" - dodaj sprzedaż\n` +
+      `"nadpisz" - zastąp istniejące\n` +
+      `"ignoruj" - pomiń importowane duplikaty`
+    );
+
+    if (!action || !["sumuj", "nadpisz", "ignoruj"].includes(action.toLowerCase())) {
+      alert("Niepoprawna akcja. Import anulowany.");
+      return;
+    }
+
+    for (const { existing, incoming } of duplicates) {
+      if (action === "sumuj") {
+        existing.sales += incoming.sales;
+      } else if (action === "nadpisz") {
+        existing.firstName = incoming.firstName;
+        existing.lastName = incoming.lastName;
+        existing.department = incoming.department;
+        existing.month = incoming.month;
+        existing.year = incoming.year;
+        existing.sales = incoming.sales;
+      } else if (action === "ignoruj") {
+      }
+    }
+
+    siteData = [...siteData, ...uniqueImports];
+
+    filteredData = [...siteData];
+    await saveToDB(siteData);
+    displayData(filteredData);
+    renderChart();
+    alert("Import zakończony pomyślnie!");
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+
+document.getElementById("exportBtn").addEventListener("click", exportToExcel);
+
+document.getElementById("importBtn").addEventListener("click", () => {
+  document.getElementById("importInput").click();
+});
+
+document.getElementById("importInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) importFromExcel(file);
+  e.target.value = ""; 
+});
