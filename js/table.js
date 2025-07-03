@@ -689,7 +689,7 @@ document.getElementById("chartType").addEventListener("change", function () {
 //Excel logic
 function exportToExcel() {
   const wsData = [
-    ["ID", "First Name", "Last Name", "Department", "Month", "Year", "Sales"]
+    ["id", "firstName", "lastName", "department", "month", "year", "sales"]
   ];
 
   filteredData.forEach(item => {
@@ -792,8 +792,8 @@ async function importFromExcel(file) {
       return;
     }
 
-    const excelHeaders = json[0].map(h => h.toString().trim().toLowerCase().replace(" ",""));
-    const expectedFields = ["id", "firstname", "lastname", "department", "month", "year", "sales"];
+    const excelHeaders = json[0].map(h => h.toString().trim().replace(" ",""));
+    const expectedFields = ["id", "firstName", "lastName", "department", "month", "year", "sales"];
 
     const headersMatch = expectedFields.every(field => excelHeaders.includes(field));
 
