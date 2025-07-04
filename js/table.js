@@ -606,7 +606,13 @@ function renderChart(chartType = "bar") {
   let isMonthGrouping = false;
 
   if (grouping === "department") {
-    groupKeyFn = item => item.department;
+    const departments = [...new Set(filteredData.map(d => d.department))];
+    if (departments.length === 1) {
+      groupKeyFn = item => `${item.firstName} ${item.lastName}`
+    }
+    else{
+      groupKeyFn = item => item.department;
+    }
   } else {
     uniqueYears = new Set(filteredData.map(d => d.year));
     if (uniqueYears.size === 1) {
