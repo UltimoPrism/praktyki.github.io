@@ -594,6 +594,7 @@ document.getElementById("maxSalesFilter").addEventListener("input", filterData);
 function renderChart(chartType = "bar") {
   const ctx = document.getElementById('salesChart').getContext('2d');
   const grouping = document.getElementById('groupSelect').value;
+
   const monthsPL = [
     "-", "styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec",
     "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień"
@@ -601,97 +602,149 @@ function renderChart(chartType = "bar") {
 
   if (chartInstance) chartInstance.destroy();
 
-  let groupKeyFn;
-  let uniqueYears = new Set();
-  let isMonthGrouping = false;
+  let labels = [];
+  let datasets = [];
 
-  if (grouping === "department") {
-    const departments = [...new Set(filteredData.map(d => d.department))];
-    if (departments.length === 1) {
-      groupKeyFn = item => `${item.firstName} ${item.lastName}`
-    }
-    else{
-      groupKeyFn = item => item.department;
-    }
+  if (grouping === "departmentOverTime" || grouping === "peopleOverTime") {
+    const timeLabels = [...new Set(filteredData.map(d => `${d.year}-${d.month}`))]
+      .sort((a, b) => {
+        const [yA, mA] = a.split("-").map(Number);
+        const [yB, mB] = b.split("-").map(Number);
+        return yA === yB ? mA - mB : yA - yB;
+      });
+
+    labels = timeLabels.map(label => {
+      const [year, month] = label.split("-");
+      return `${monthsPL[+month]} ${year}`;
+    });
+
+    const groupBy = grouping === "departmentOverTime"
+      ? (d) => d.department
+      : (d) => `${d.firstName} ${d.lastName}`;
+
+    const groupKeys = [...new Set(filteredData.map(groupBy))];
+
+    datasets = groupKeys.map(group => {
+      const dataMap = {};
+
+      filteredData.forEach(entry => {
+        if (groupBy(entry) === group) {
+          const key = `${entry.year}-${entry.month}`;
+          if (!dataMap[key]) dataMap[key] = 0;
+          dataMap[key] += entry.sales;
+        }
+      });
+
+      const data = timeLabels.map(key => dataMap[key] || 0);
+
+      return {
+        label: group,
+        data: data,
+        fill: false,
+        tension: 0.2,
+        borderWidth: 2
+      };
+    });
+
   } else {
-    uniqueYears = new Set(filteredData.map(d => d.year));
-    if (uniqueYears.size === 1) {
-      groupKeyFn = item => item.month;  // use numeric month for sorting
-      isMonthGrouping = true;
+    let groupKeyFn;
+    let uniqueYears = new Set();
+    let isMonthGrouping = false;
+
+    if (grouping === "department") {
+      const departments = [...new Set(filteredData.map(d => d.department))];
+      groupKeyFn = departments.length === 1
+        ? (item) => `${item.firstName} ${item.lastName}`
+        : (item) => item.department;
     } else {
-      groupKeyFn = item => item.year;
+      uniqueYears = new Set(filteredData.map(d => d.year));
+      if (uniqueYears.size === 1) {
+        groupKeyFn = (item) => item.month;
+        isMonthGrouping = true;
+      } else {
+        groupKeyFn = (item) => item.year;
+      }
     }
-  }
 
-  const grouped = {};
-  filteredData.forEach(entry => {
-    const key = groupKeyFn(entry);
-    if (!grouped[key]) grouped[key] = 0;
-    grouped[key] += entry.sales;
-  });
+    const grouped = {};
+    filteredData.forEach(entry => {
+      const key = groupKeyFn(entry);
+      if (!grouped[key]) grouped[key] = 0;
+      grouped[key] += entry.sales;
+    });
 
-  let labels;
-  if (isMonthGrouping) {
-    // Sort numerically and convert to Polish month names
-    labels = Object.keys(grouped).map(Number).sort((a, b) => a - b);
-    labels = labels.map(m => monthsPL[m]);
-  } else if (grouping === "time") {
-    // Year-based grouping: sort years numerically
-    labels = Object.keys(grouped).map(Number).sort((a, b) => a - b).map(String);
-  } else {
-    // Department or other grouping: sort alphabetically
-    labels = Object.keys(grouped).sort();
-  }
-
-  const values = labels.map(label => {
-    // If month name (from isMonthGrouping), find the month index
     if (isMonthGrouping) {
-      const monthIndex = monthsPL.indexOf(label);
-      return grouped[monthIndex];
+      labels = Object.keys(grouped).map(Number).sort((a, b) => a - b).map(m => monthsPL[m]);
+    } else if (grouping === "time") {
+      labels = Object.keys(grouped).map(Number).sort((a, b) => a - b).map(String);
+    } else {
+      labels = Object.keys(grouped).sort();
     }
-    return grouped[label];
-  });
 
+    const values = labels.map(label => {
+      if (isMonthGrouping) {
+        const monthIndex = monthsPL.indexOf(label);
+        return grouped[monthIndex];
+      }
+      return grouped[label];
+    });
+
+    datasets = [{
+      label: 'Sprzedaż',
+      data: values,
+      backgroundColor: ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236'],
+      borderWidth: 1
+    }];
+  }
+
+  // Create the chart
   chartInstance = new Chart(ctx, {
-    type: chartType,
+    type: chartType === "line" || chartType === "bar" ? chartType : "line",
     data: {
-      labels: labels,
-      datasets: [{
-        label: 'Sprzedaż',
-        data: values,
-        backgroundColor: ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236'],
-        borderWidth: 1
-      }]
+      labels,
+      datasets
     },
     options: {
       responsive: true,
       plugins: {
         legend: {
-          display: chartType !== 'bar' && chartType !== 'line'
+          display: true
         },
         tooltip: {
           callbacks: {
-            label: context => `${context.label}: ${context.raw}`
+            label: context => `${context.dataset.label}: ${context.raw}`
           }
         }
       },
-      scales: chartType === 'bar' || chartType === 'line' ? {
+      scales: {
         y: {
-          beginAtZero: true
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Sprzedaż"
+          }
+        },
+        x: {
+          ticks: {
+            autoSkip: true,
+            maxRotation: 90,
+            minRotation: 45
+          }
         }
-      } : {}
+      }
     }
   });
 }
 
+document.getElementById("chartType").addEventListener("change", function () {
+  renderChart(this.value);
+});
 document.getElementById("groupSelect").addEventListener("change", function () {
 
   renderChart(document.getElementById("chartType").value);
 });
 
-document.getElementById("chartType").addEventListener("change", function () {
-  renderChart(this.value);
-});
+
 //Excel logic
 function exportToExcel() {
   const wsData = [
@@ -720,8 +773,7 @@ async function importFromExcel(file) {
   const reader = new FileReader();
 
   function createMappingDialog(excelHeaders, targetFields) {
-    return new Promise(resolve => {
-      // Tworzymy modal i formularz dynamicznie
+    return new Promise((resolve, reject) => {
       const modal = document.createElement("div");
       modal.style = `
         position: fixed; top:0; left:0; width:100%; height:100%; 
@@ -755,6 +807,7 @@ async function importFromExcel(file) {
         targetFields.forEach(field => {
           const option = document.createElement("option");
           option.value = field;
+          if (field === header) option.setAttribute("selected", "true");
           option.textContent = field;
           select.appendChild(option);
         });
@@ -766,9 +819,15 @@ async function importFromExcel(file) {
       const btnSubmit = document.createElement("button");
       btnSubmit.type = "submit";
       btnSubmit.textContent = "Importuj";
-      btnSubmit.style = "margin-top: 15px; padding: 8px 12px;";
-      form.appendChild(btnSubmit);
+      btnSubmit.style = "margin-top: 15px; padding: 8px 12px; margin-right: 10px;";
+      
+      const btnCancel = document.createElement("button");
+      btnCancel.type = "button";
+      btnCancel.textContent = "Anuluj";
+      btnCancel.style = "margin-top: 15px; padding: 8px 12px;";
 
+      form.appendChild(btnSubmit);
+      form.appendChild(btnCancel);
       modal.appendChild(form);
       document.body.appendChild(modal);
 
@@ -782,6 +841,11 @@ async function importFromExcel(file) {
         }
         document.body.removeChild(modal);
         resolve(mapping);
+      };
+
+      btnCancel.onclick = () => {
+        document.body.removeChild(modal);
+        reject("Import anulowany przez użytkownika.");
       };
     });
   }
@@ -798,14 +862,19 @@ async function importFromExcel(file) {
       return;
     }
 
-    const excelHeaders = json[0].map(h => h.toString().trim().replace(" ",""));
+    const excelHeaders = json[0].map(h => h.toString().trim().replace(" ", ""));
     const expectedFields = ["id", "firstName", "lastName", "department", "month", "year", "sales"];
 
     const headersMatch = expectedFields.every(field => excelHeaders.includes(field));
 
     let mapping = null;
     if (!headersMatch) {
-      mapping = await createMappingDialog(excelHeaders, expectedFields);
+      try {
+        mapping = await createMappingDialog(excelHeaders, expectedFields);
+      } catch (err) {
+        alert(err);
+        return;
+      }
     } else {
       mapping = {};
       expectedFields.forEach(field => {
@@ -814,17 +883,14 @@ async function importFromExcel(file) {
       });
     }
 
-    // Parsowanie danych wg mapowania
     const importedData = json.slice(1).map(row => {
       const obj = {};
       for (const [colIndex, field] of Object.entries(mapping)) {
         let value = row[colIndex];
 
-        // Rzutowanie typów dla konkretnych pól
         if (["id", "month", "year", "sales"].includes(field)) {
           value = Number(value);
           if (isNaN(value)) {
-            // Jeśli wartość numeryczna niepoprawna, daj null albo 0 w sales
             value = field === "sales" ? 0 : null;
           }
         } else if (typeof value === "undefined" || value === null) {
@@ -837,10 +903,10 @@ async function importFromExcel(file) {
 
     function isDuplicate(a, b) {
       return a.firstName === b.firstName &&
-             a.lastName === b.lastName &&
-             a.department === b.department &&
-             a.month === b.month &&
-             a.year === b.year;
+        a.lastName === b.lastName &&
+        a.department === b.department &&
+        a.month === b.month &&
+        a.year === b.year;
     }
 
     const duplicates = [];
@@ -864,14 +930,65 @@ async function importFromExcel(file) {
       alert("Import zakończony pomyślnie!");
       return;
     }
+  function showDuplicateActionDialog(duplicateCount) {
+    return new Promise((resolve) => {
+      // Modal wrapper
+      const modal = document.createElement("div");
+      modal.className = "modal fade show";
+      modal.style.display = "block";
+      modal.tabIndex = -1;
+      modal.setAttribute("role", "dialog");
+      modal.setAttribute("aria-modal", "true");
 
-    const action = prompt(
-      `Znaleziono ${duplicates.length} duplikaty.\n` +
-      `Wpisz:\n` +
-      `"sumuj" - dodaj sprzedaż\n` +
-      `"nadpisz" - zastąp istniejące\n` +
-      `"ignoruj" - pomiń importowane duplikaty`
-    );
+      // Modal backdrop
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop fade show";
+
+      // Modal dialog structure
+      modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Znaleziono duplikaty</h5>
+            </div>
+            <div class="modal-body">
+              <p>Znaleziono <strong>${duplicateCount}</strong> duplikaty.<br>Co chcesz zrobić?</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" id="btn-sumuj">Sumuj</button>
+              <button type="button" class="btn btn-warning" id="btn-nadpisz">Nadpisz</button>
+              <button type="button" class="btn btn-secondary" id="btn-ignoruj">Ignoruj</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Button event handlers
+      modal.querySelector("#btn-sumuj").onclick = () => {
+        cleanup();
+        resolve("sumuj");
+      };
+      modal.querySelector("#btn-nadpisz").onclick = () => {
+        cleanup();
+        resolve("nadpisz");
+      };
+      modal.querySelector("#btn-ignoruj").onclick = () => {
+        cleanup();
+        resolve("ignoruj");
+      };
+
+      function cleanup() {
+        document.body.removeChild(modal);
+        document.body.removeChild(backdrop);
+      }
+
+      document.body.appendChild(modal);
+      document.body.appendChild(backdrop);
+    });
+  }
+
+    const action = await showDuplicateActionDialog(duplicates.length);
+
 
     if (!action || !["sumuj", "nadpisz", "ignoruj"].includes(action.toLowerCase())) {
       alert("Niepoprawna akcja. Import anulowany.");
@@ -888,8 +1005,6 @@ async function importFromExcel(file) {
         existing.month = incoming.month;
         existing.year = incoming.year;
         existing.sales = incoming.sales;
-      } else if (action === "ignoruj") {
-        // nic nie rób
       }
     }
 
@@ -903,6 +1018,7 @@ async function importFromExcel(file) {
 
   reader.readAsArrayBuffer(file);
 }
+
 
 
 document.getElementById("exportBtn").addEventListener("click", exportToExcel);
