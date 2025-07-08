@@ -699,7 +699,7 @@ function renderChart(chartType = "bar") {
 
   // Create the chart
   chartInstance = new Chart(ctx, {
-    type: chartType === "line" || chartType === "bar" ? chartType : "line",
+    type: chartType,
     data: {
       labels,
       datasets
