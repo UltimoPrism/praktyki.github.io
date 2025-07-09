@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "API Ubezpieczenie Kosztów Leczenia",
-    "version": "1.0.0"
+    "title": "API Ubezpieczenia",
+    "version": "0.0.1"
   },
   "paths": {
     "/ubezpieczenia": {
