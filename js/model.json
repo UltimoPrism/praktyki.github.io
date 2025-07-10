@@ -14,30 +14,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/wniosek"
-              },
-              "example": {
-                "imie": "Jan",
-                "nazwisko": "Kowalski",
-                "dataUrodzenia": "1985-05-15",
-                "pesel": "",
-                "ulica": "Marszałkowska",
-                "nrDomu": "10A",
-                "nrMieszkania": "5",
-                "kodPocztowy": "00-001",
-                "miasto": "Warszawa",
-                "telefon": "+48123456789",
-                "wariant": "BP21_1",
-                "numerWycieczki": "WYCZ123",
-                "krajDocelowy": "Włochy",
-                "typWycieczki": "P",
-                "dataZawarciaUmowyLubZaliczki": "2025-01-10",
-                "dataWykupieniaUbezpieczenia": "2025-01-12",
-                "dataImprezyOd": "2025-07-01",
-                "dataImprezyDo": "2025-07-10",
-                "cenaImprezy": 2500.5,
-                "walutaCenyImprezy": "PLN",
-                "rodzajDojazdu": "Z",
-                "numerRezerwacji": 45678
               }
             }
           }
@@ -48,6 +24,85 @@
           }
         }
       }
+    },
+    "/slowniki/warianty": {
+      "get": {
+        "summary": "Pobierz listę wariantów ubezpieczenia",
+        "responses": {
+          "200": {
+            "description": "Lista wariantów",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": [
+                    "BP21_1", "BP21_2", "BP21_3", "BP21_4", "BP21_5", "BP21_6",
+                    "BR23_1", "BR23_2", "BR23_3", "BR23_4", "NNW24_1"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slowniki/typy-wycieczek": {
+      "get": {
+        "summary": "Pobierz typy wycieczek",
+        "responses": {
+          "200": {
+            "description": "Lista typów wycieczek",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["P", "O", "I", "BL", "N", "BW", "SZ", "R", "W", "CZ"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slowniki/waluty": {
+      "get": {
+        "summary": "Pobierz dostępne waluty",
+        "responses": {
+          "200": {
+            "description": "Lista walut",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["PLN", "EUR", "USD"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/slowniki/rodzaje-dojazdu": {
+      "get": {
+        "summary": "Pobierz rodzaje dojazdu",
+        "responses": {
+          "200": {
+            "description": "Lista rodzajów dojazdu",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "example": ["Z", "W"]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -55,8 +110,7 @@
       "wniosek": {
         "type": "object",
         "required": [
-          "imie",
-          "nazwisko",
+          "osoby",
           "wariant",
           "krajDocelowy",
           "typWycieczki",
@@ -64,42 +118,36 @@
           "dataImprezyDo"
         ],
         "properties": {
-          "imie": { "type": "string" },
-          "nazwisko": { "type": "string" },
-          "dataUrodzenia": { "type": "string", "format": "date" },
-          "pesel": { "type": "string" },
-          "ulica": { "type": "string" },
-          "nrDomu": { "type": "string" },
-          "nrMieszkania": { "type": "string" },
-          "kodPocztowy": { "type": "string" },
-          "miasto": { "type": "string" },
-          "telefon": { "type": "string" },
-          "wariant": {
-            "type": "string",
-            "enum": [
-              "BP21_1", "BP21_2", "BP21_3", "BP21_4", "BP21_5", "BP21_6",
-              "BR23_1", "BR23_2", "BR23_3", "BR23_4", "NNW24_1"
-            ]
+          "osoby": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["imie", "nazwisko"],
+              "properties": {
+                "imie": { "type": "string" },
+                "nazwisko": { "type": "string" },
+                "dataUrodzenia": { "type": "string", "format": "date" },
+                "pesel": { "type": "string" },
+                "ulica": { "type": "string" },
+                "nrDomu": { "type": "string" },
+                "nrMieszkania": { "type": "string" },
+                "kodPocztowy": { "type": "string" },
+                "miasto": { "type": "string" },
+                "telefon": { "type": "string" }
+              }
+            }
           },
+          "wariant": { "type": "string" },
           "numerWycieczki": { "type": "string" },
           "krajDocelowy": { "type": "string" },
-          "typWycieczki": {
-            "type": "string",
-            "enum": ["P", "O", "I", "BL", "N", "BW", "SZ", "R", "W", "CZ"]
-          },
+          "typWycieczki": { "type": "string" },
           "dataZawarciaUmowyLubZaliczki": { "type": "string", "format": "date" },
           "dataWykupieniaUbezpieczenia": { "type": "string", "format": "date" },
           "dataImprezyOd": { "type": "string", "format": "date" },
           "dataImprezyDo": { "type": "string", "format": "date" },
           "cenaImprezy": { "type": "number", "format": "float" },
-          "walutaCenyImprezy": {
-            "type": "string",
-            "enum": ["PLN", "EUR", "USD"]
-          },
-          "rodzajDojazdu": {
-            "type": "string",
-            "enum": ["Z", "W"]
-          },
+          "walutaCenyImprezy": { "type": "string" },
+          "rodzajDojazdu": { "type": "string" },
           "numerRezerwacji": { "type": "integer" }
         }
       }
