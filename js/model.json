@@ -34,12 +34,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "example": [
-                    "BP21_1", "BP21_2", "BP21_3", "BP21_4", "BP21_5", "BP21_6",
-                    "BR23_1", "BR23_2", "BR23_3", "BR23_4", "NNW24_1"
-                  ]
+                  "$ref": "#/components/schemas/WariantyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Błąd",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -56,9 +61,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "example": ["P", "O", "I", "BL", "N", "BW", "SZ", "R", "W", "CZ"]
+                  "$ref": "#/components/schemas/TypyWycieczekResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Błąd",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -75,9 +88,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "example": ["PLN", "EUR", "USD"]
+                  "$ref": "#/components/schemas/WalutyResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Błąd",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -94,9 +115,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": { "type": "string" },
-                  "example": ["Z", "W"]
+                  "$ref": "#/components/schemas/RodzajeDojazduResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Błąd",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultResponse"
                 }
               }
             }
@@ -107,6 +136,146 @@
   },
   "components": {
     "schemas": {
+      "DefaultResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "OK"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Przykładowa treść komunikatu"
+            }
+          }
+        }
+      },
+      "WariantUbezpieczenia": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "NNW24_1"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ubezpieczenie od Następstw nieszczęśliwych wypadków."
+          }
+        }
+      },
+      "WariantyResponse": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "options": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WariantUbezpieczenia"
+                }
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/DefaultResponse"
+          }
+        ]
+      },
+      "TypWycieczki": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "P"
+          },
+          "name": {
+            "type": "string",
+            "example": "Wycieczka pobytowa"
+          }
+        }
+      },
+      "TypyWycieczekResponse": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "options": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TypWycieczki"
+                }
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/DefaultResponse"
+          }
+        ]
+      },
+      "Waluta": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "PLN"
+          },
+          "name": {
+            "type": "string",
+            "example": "Polski złoty"
+          }
+        }
+      },
+      "WalutyResponse": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "options": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Waluta"
+                }
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/DefaultResponse"
+          }
+        ]
+      },
+      "RodzajDojazdu": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "Z"
+          },
+          "name": {
+            "type": "string",
+            "example": "Dojazd zorganizowany"
+          }
+        }
+      },
+      "RodzajeDojazduResponse": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "options": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RodzajDojazdu"
+                }
+              }
+            }
+          },
+          {
+            "$ref": "#/components/schemas/DefaultResponse"
+          }
+        ]
+      },
       "wniosek": {
         "type": "object",
         "required": [
@@ -122,33 +291,91 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["imie", "nazwisko"],
+              "required": [
+                "imie",
+                "nazwisko"
+              ],
               "properties": {
-                "imie": { "type": "string" },
-                "nazwisko": { "type": "string" },
-                "dataUrodzenia": { "type": "string", "format": "date" },
-                "pesel": { "type": "string" },
-                "ulica": { "type": "string" },
-                "nrDomu": { "type": "string" },
-                "nrMieszkania": { "type": "string" },
-                "kodPocztowy": { "type": "string" },
-                "miasto": { "type": "string" },
-                "telefon": { "type": "string" }
+                "imie": {
+                  "type": "string"
+                },
+                "nazwisko": {
+                  "type": "string"
+                },
+                "dataUrodzenia": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "pesel": {
+                  "type": "string"
+                },
+                "ulica": {
+                  "type": "string"
+                },
+                "nrDomu": {
+                  "type": "string"
+                },
+                "nrMieszkania": {
+                  "type": "string"
+                },
+                "kodPocztowy": {
+                  "type": "string"
+                },
+                "miasto": {
+                  "type": "string"
+                },
+                "telefon": {
+                  "type": "string"
+                }
               }
             }
           },
-          "wariant": { "type": "string" },
-          "numerWycieczki": { "type": "string" },
-          "krajDocelowy": { "type": "string" },
-          "typWycieczki": { "type": "string" },
-          "dataZawarciaUmowyLubZaliczki": { "type": "string", "format": "date" },
-          "dataWykupieniaUbezpieczenia": { "type": "string", "format": "date" },
-          "dataImprezyOd": { "type": "string", "format": "date" },
-          "dataImprezyDo": { "type": "string", "format": "date" },
-          "cenaImprezy": { "type": "number", "format": "float" },
-          "walutaCenyImprezy": { "type": "string" },
-          "rodzajDojazdu": { "type": "string" },
-          "numerRezerwacji": { "type": "integer" }
+          "wariant": {
+            "type": "string",
+            "description": "Kod wariantu ubezpieczenia. Wartość z /slowniki/warianty",
+            "example": "NNW24_1"
+          },
+          "numerWycieczki": {
+            "type": "string"
+          },
+          "krajDocelowy": {
+            "type": "string"
+          },
+          "typWycieczki": {
+            "type": "string",
+            "description": "Kod typu wycieczki. Wartość z /slowniki/typy-wycieczek"
+          },
+          "dataZawarciaUmowyLubZaliczki": {
+            "type": "string",
+            "format": "date"
+          },
+          "dataWykupieniaUbezpieczenia": {
+            "type": "string",
+            "format": "date"
+          },
+          "dataImprezyOd": {
+            "type": "string",
+            "format": "date"
+          },
+          "dataImprezyDo": {
+            "type": "string",
+            "format": "date"
+          },
+          "cenaImprezy": {
+            "type": "number",
+            "format": "float"
+          },
+          "walutaCenyImprezy": {
+            "type": "string",
+            "description": "Kod waluty. Wartość z /slowniki/waluty"
+          },
+          "rodzajDojazdu": {
+            "type": "string",
+            "description": "Kod rodzaju dojazdu. Wartość z /slowniki/rodzaje-dojazdu"
+          },
+          "numerRezerwacji": {
+            "type": "integer"
+          }
         }
       }
     }
