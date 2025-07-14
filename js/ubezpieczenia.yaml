@@ -1,0 +1,192 @@
+openapi: 3.0.3
+info:
+  title: API Ubezpieczenia
+  version: 0.0.1
+paths:
+  /ubezpieczenia:
+    post:
+      summary: Dodaj nowy wniosek ubezpieczeniowy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/wniosek'
+      responses:
+        '201':
+          description: Wniosek został zapisany
+  /slowniki/warianty:
+    get:
+      summary: Pobierz listę wariantów ubezpieczenia
+      responses:
+        '200':
+          description: Lista wariantów
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WariantyResponse"
+        '404':
+          description: Błąd
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DefaultResponse"
+  /slowniki/typy-wycieczek:
+    get:
+      summary: Pobierz typy wycieczek
+      responses:
+        '200':
+          description: Lista typów wycieczek
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - P
+                  - O
+                  - I
+                  - BL
+                  - 'N'
+                  - BW
+                  - SZ
+                  - R
+                  - W
+                  - CZ
+  /slowniki/waluty:
+    get:
+      summary: Pobierz dostępne waluty
+      responses:
+        '200':
+          description: Lista walut
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - PLN
+                  - EUR
+                  - USD
+  /slowniki/rodzaje-dojazdu:
+    get:
+      summary: Pobierz rodzaje dojazdu
+      responses:
+        '200':
+          description: Lista rodzajów dojazdu
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example:
+                  - Z
+                  - W
+components:
+  schemas:
+    DefaultResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: OK
+        messages:
+          type: array
+          items:
+            type: string
+            example: Przykładowa treść komunikatu
+
+    WariantyResponse:
+      allOf:
+        - type: object
+          properties:
+            options:
+              type: array
+              items:
+                $ref: "#/components/schemas/WariantUbezpieczenia"
+        - $ref: "#/components/schemas/DefaultResponse"
+
+
+
+    WariantUbezpieczenia:
+      type: object
+      properties:
+        code:
+          type: string
+          example: NNW24_1
+        name:
+          type: string
+          example: Ubezpieczenie od Następstw nieszczęśliwych wypadków.
+    wniosek:
+      type: object
+      required:
+        - osoby
+        - wariant
+        - krajDocelowy
+        - typWycieczki
+        - dataImprezyOd
+        - dataImprezyDo
+      properties:
+        osoby:
+          type: array
+          items:
+            type: object
+            required:
+              - imie
+              - nazwisko
+            properties:
+              imie:
+                type: string
+              nazwisko:
+                type: string
+              dataUrodzenia:
+                type: string
+                format: date
+              pesel:
+                type: string
+              ulica:
+                type: string
+              nrDomu:
+                type: string
+              nrMieszkania:
+                type: string
+              kodPocztowy:
+                type: string
+              miasto:
+                type: string
+              telefon:
+                type: string
+        wariant:
+          type: string
+          example: NNW24_1,
+          description: Any of WariantyResponse.options.code
+        numerWycieczki:
+          type: string
+        krajDocelowy:
+          type: string
+        typWycieczki:
+          type: string
+        dataZawarciaUmowyLubZaliczki:
+          type: string
+          format: date
+        dataWykupieniaUbezpieczenia:
+          type: string
+          format: date
+        dataImprezyOd:
+          type: string
+          format: date
+        dataImprezyDo:
+          type: string
+          format: date
+        cenaImprezy:
+          type: number
+          format: float
+        walutaCenyImprezy:
+          type: string
+        rodzajDojazdu:
+          type: string
+        numerRezerwacji:
+          type: integer
